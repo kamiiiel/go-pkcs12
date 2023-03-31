@@ -1,4 +1,4 @@
-module github.com/src/go-pkcs12
+module github.com/kamiiiel/go-pkcs12
 
 go 1.15
 
