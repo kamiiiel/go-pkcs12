@@ -362,8 +362,8 @@ func DecodeTrustStore(pfxData []byte, password string) (certs []*x509.Certificat
 }
 
 type KeyPair struct {
-	privateKey interface{}
-	cert       *x509.Certificate
+	PrivateKey interface{}
+	Cert       *x509.Certificate
 }
 
 // DecodeTrustStore extracts the certificates from pfxData, which must be a DER-encoded
@@ -401,9 +401,9 @@ func DecodeKeyStore(pfxData []byte, password string) (keyPairs []KeyPair, err er
 				return nil, err
 			}
 
-			kp.cert = parsedCerts[0]
+			kp.Cert = parsedCerts[0]
 		case bag.Id.Equal(oidPKCS8ShroundedKeyBag):
-			if kp.privateKey, err = decodePkcs8ShroudedKeyBag(bag.Value.Bytes, encodedPassword); err != nil {
+			if kp.PrivateKey, err = decodePkcs8ShroudedKeyBag(bag.Value.Bytes, encodedPassword); err != nil {
 				return nil, err
 			}
 		default:
