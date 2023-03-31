@@ -1,4 +1,4 @@
-module software.sslmate.com/src/go-pkcs12
+module gravitee.io/src/go-pkcs12
 
 go 1.15
 

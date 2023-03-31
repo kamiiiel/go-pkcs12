@@ -361,6 +361,61 @@ func DecodeTrustStore(pfxData []byte, password string) (certs []*x509.Certificat
 	return
 }
 
+type KeyPair struct {
+	privateKey interface{}
+	cert       *x509.Certificate
+}
+
+// DecodeTrustStore extracts the certificates from pfxData, which must be a DER-encoded
+// PKCS#12 file containing exclusively certificates with attribute 2.16.840.1.113894.746875.1.1,
+// which is used by Java to designate a trust anchor.
+func DecodeKeyStore(pfxData []byte, password string) (keyPairs []KeyPair, err error) {
+	encodedPassword, err := bmpStringZeroTerminated(password)
+	if err != nil {
+		return nil, err
+	}
+
+	bags, encodedPassword, err := getSafeContents(pfxData, encodedPassword, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, bag := range bags {
+		kp := new(KeyPair)
+		switch {
+		case bag.Id.Equal(oidCertBag):
+			if !bag.hasAttribute(oidJavaTrustStore) {
+				return nil, errors.New("pkcs12: trust store contains a certificate that is not marked as trusted")
+			}
+			certsData, err := decodeCertBag(bag.Value.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			parsedCerts, err := x509.ParseCertificates(certsData)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(parsedCerts) != 1 {
+				err = errors.New("pkcs12: expected exactly one certificate in the certBag")
+				return nil, err
+			}
+
+			kp.cert = parsedCerts[0]
+		case bag.Id.Equal(oidPKCS8ShroundedKeyBag):
+			if kp.privateKey, err = decodePkcs8ShroudedKeyBag(bag.Value.Bytes, encodedPassword); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, errors.New("pkcs12: expected only certificate bags")
+		}
+
+		keyPairs = append(keyPairs, *kp)
+	}
+
+	return
+}
+
 func getSafeContents(p12Data, password []byte, expectedItems int) (bags []safeBag, updatedPassword []byte, err error) {
 	pfx := new(pfxPdu)
 	if err := unmarshal(p12Data, pfx); err != nil {
